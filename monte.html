@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full select-none">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mestre dos Triângulos - Jogo Educativo de Geometria</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            purple: '#8B5CF6',
+                            pink: '#EC4899',
+                            cyan: '#06B6D4',
+                            yellow: '#F59E0B',
+                            green: '#10B981',
+                            dark: '#0F172A',
+                            card: '#1E293B'
+                        }
+                    },
+                    fontFamily: {
+                        fredoka: ['Fredoka', 'sans-serif'],
+                        outfit: ['Outfit', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        * {
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: #0F172A;
+            background-image: 
+                radial-gradient(at 10% 10%, rgba(139, 92, 246, 0.15) 0px, transparent 50%),
+                radial-gradient(at 90% 90%, rgba(6, 182, 212, 0.15) 0px, transparent 50%);
+            background-attachment: fixed;
+            overflow-x: hidden;
+        }
+
+        .touch-canvas {
+            touch-action: none;
+        }
+
+        /* Neon Glow Effects */
+        .glow-purple { box-shadow: 0 0 20px rgba(139, 92, 246, 0.4); }
+        .glow-green { box-shadow: 0 0 20px rgba(16, 185, 129, 0.4); }
+        .glow-yellow { box-shadow: 0 0 20px rgba(245, 158, 11, 0.4); }
+        .glow-cyan { box-shadow: 0 0 20px rgba(6, 182, 212, 0.4); }
+
+        /* Bounce & Pulse Animations */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+        .animate-pulse-ring { animation: pulse-ring 2s infinite ease-in-out; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1E293B;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body class="h-full text-slate-100 flex flex-col justify-between">
+
+    <canvas id="confettiCanvas" class="fixed inset-0 pointer-events-none z-50 w-full h-full"></canvas>
+
+    <header class="bg-slate-800/80 backdrop-blur-md border-b border-slate-700/60 sticky top-0 z-30 px-3 py-2.5 sm:px-6">
+        <div class="max-w-5xl mx-auto flex items-center justify-between gap-2">
+            
+            <!-- Logo / Game Title -->
+            <div class="flex items-center gap-2 cursor-pointer" onclick="switchTab('lab')">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/30">
+                    <i class="fa-solid to-amber-300 fa-shapes text-xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="font-outfit font-extrabold text-lg sm:text-xl tracking-wide bg-gradient-to-r from-purple-300 via-pink-300 to-cyan-300 bg-clip-text text-transparent">
+                        MESTRE DOS TRIÂNGULOS
+                    </h1>
+                    <p class="text-[10px] sm:text-xs text-slate-400 font-medium">Matemática - 6º Ano</p>
+                </div>
+            </div>
+
+            <!-- Stats & Quick Actions -->
+            <div class="flex items-center gap-2 sm:gap-4">
+                <!-- Stars / Score -->
+                <div class="flex items-center gap-1.5 bg-slate-900/80 border border-slate-700/80 px-3 py-1.5 rounded-full">
+                    <i class="fa-solid fa-star text-amber-400 text-sm animate-bounce"></i>
+                    <span id="globalScore" class="font-outfit font-bold text-amber-400 text-sm sm:text-base">0</span>
+                </div>
+
+                <!-- Almanac Modal Button -->
+                <button onclick="toggleAlmanac(true)" class="p-2 sm:px-3 sm:py-1.5 bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/40 text-cyan-300 rounded-xl flex items-center gap-2 transition active:scale-95 text-xs sm:text-sm font-semibold">
+                    <i class="fa-solid fa-book-open text-base"></i>
+                    <span class="hidden sm:inline">Guia de Estudo</span>
+                </button>
+
+                <!-- Mute Toggle -->
+                <button id="soundBtn" onclick="toggleSound()" class="w-9 h-9 bg-slate-700/60 hover:bg-slate-700 text-slate-300 rounded-xl flex items-center justify-center transition active:scale-95 border border-slate-600/50">
+                    <i class="fa-solid fa-volume-high"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto w-full px-3 py-4 flex-1 flex flex-col gap-4">
+
+        <!-- Navigation Tabs -->
+        <nav class="grid grid-cols-4 gap-1.5 sm:gap-3 bg-slate-800/60 p-1.5 rounded-2xl border border-slate-700/50">
+            <button onclick="switchTab('lab')" id="tab-lab" class="tab-btn py-2.5 px-1 rounded-xl font-bold text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-all bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md">
+                <i class="fa-solid fa-compass-drafting text-base"></i>
+                <span>1. Monte</span>
+            </button>
+            <button onclick="switchTab('classifier')" id="tab-classifier" class="tab-btn py-2.5 px-1 rounded-xl font-bold text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-700/40">
+                <i class="fa-solid fa-boxes-stacked text-base"></i>
+                <span>2. Classifique</span>
+            </button>
+            <button onclick="switchTab('quiz')" id="tab-quiz" class="tab-btn py-2.5 px-1 rounded-xl font-bold text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-700/40">
+                <i class="fa-solid fa-brain text-base"></i>
+                <span>3. Quiz</span>
+            </button>
+            <button onclick="switchTab('badges')" id="tab-badges" class="tab-btn py-2.5 px-1 rounded-xl font-bold text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-700/40">
+                <i class="fa-solid fa-trophy text-base"></i>
+                <span>Medalhas</span>
+            </button>
+        </nav>
+
+        <section id="section-lab" class="game-section flex flex-col gap-3">
+            <!-- Mission Banner -->
+            <div class="bg-gradient-to-r from-purple-900/60 via-slate-800 to-indigo-900/60 border border-purple-500/30 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
+                <div class="flex items-center gap-3 w-full sm:w-auto">
+                    <div class="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-400/40 flex items-center justify-center text-purple-300 font-bold text-lg shrink-0">
+                        <span id="labMissionNumber">1</span>
+                    </div>
+                    <div>
+                        <div class="text-[11px] uppercase tracking-wider text-purple-300 font-semibold">Sua Missão Atual:</div>
+                        <div id="labMissionText" class="font-outfit font-bold text-base sm:text-lg text-amber-300">
+                            Crie um Triângulo RETÂNGULO e ISÓSCELES!
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                    <button onclick="resetLabCanvas()" class="px-3 py-2 bg-slate-700/60 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-slate-600 transition active:scale-95">
+                        <i class="fa-solid fa-rotate-left"></i> Redefinir
+                    </button>
+                    <button onclick="checkLabMission()" class="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition active:scale-95">
+                        <i class="fa-solid fa-circle-check"></i> Verificar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Canvas Container -->
+            <div class="relative bg-slate-900/90 rounded-2xl border-2 border-slate-700/80 overflow-hidden shadow-2xl flex flex-col">
+                <div class="absolute top-3 left-3 bg-slate-800/80 backdrop-blur px-3 py-1.5 rounded-xl border border-slate-700 text-xs text-slate-300 z-10 flex items-center gap-2">
+                    <i class="fa-solid fa-hand-pointer text-purple-400 animate-pulse"></i>
+                    <span>Arraste os vértices (pontos <b>A</b>, <b>B</b>, <b>C</b>)</span>
+                </div>
+
+                <!-- Interactive Touch Canvas -->
+                <canvas id="labCanvas" class="touch-canvas w-full h-[320px] sm:h-[380px] cursor-crosshair"></canvas>
+
+                <!-- Live Measurements Drawer -->
+                <div class="bg-slate-800/90 border-t border-slate-700/80 p-3 grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                    <!-- Live Side Lengths -->
+                    <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-700/50">
+                        <span class="text-slate-400 block text-[10px] uppercase font-semibold">Lados (Comprimento):</span>
+                        <div class="font-outfit font-bold text-slate-200 mt-1 space-y-0.5">
+                            <div>AB: <span id="labSideAB" class="text-cyan-400">0</span> cm</div>
+                            <div>BC: <span id="labSideBC" class="text-cyan-400">0</span> cm</div>
+                            <div>CA: <span id="labSideCA" class="text-cyan-400">0</span> cm</div>
+                        </div>
+                    </div>
+
+                    <!-- Live Angles -->
+                    <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-700/50">
+                        <span class="text-slate-400 block text-[10px] uppercase font-semibold">Ângulos Internos:</span>
+                        <div class="font-outfit font-bold text-slate-200 mt-1 space-y-0.5">
+                            <div>Ângulo A: <span id="labAngleA" class="text-pink-400">0°</span></div>
+                            <div>Ângulo B: <span id="labAngleB" class="text-pink-400">0°</span></div>
+                            <div>Ângulo C: <span id="labAngleC" class="text-pink-400">0°</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Current Detected Realtime Status -->
+                    <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-700/50 col-span-2 sm:col-span-1 flex flex-col justify-center">
+                        <span class="text-slate-400 block text-[10px] uppercase font-semibold">Classificação Atual:</span>
+                        <div class="mt-1 font-outfit font-extrabold">
+                            <span id="labCurrentSides" class="text-amber-400 block text-xs">----</span>
+                            <span id="labCurrentAngles" class="text-emerald-400 block text-xs">----</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="section-classifier" class="game-section hidden flex-col gap-3">
+            <!-- Header Status -->
+            <div class="bg-slate-800/80 border border-slate-700 p-3 rounded-2xl flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs uppercase font-bold text-cyan-400">Fase Atual:</span>
+                    <span id="classifierCategoryMode" class="text-sm font-extrabold text-white bg-cyan-900/50 border border-cyan-500/30 px-3 py-1 rounded-lg">
+                        Classificar por LADOS
+                    </span>
+                </div>
+                <div class="text-xs font-semibold text-slate-300">
+                    Acertos: <span id="classifierScore" class="text-emerald-400 font-bold text-sm">0/5</span>
+                </div>
+            </div>
+
+            <p class="text-xs sm:text-sm text-slate-300 bg-slate-800/40 p-2.5 rounded-xl border border-slate-700/50 text-center">
+                👉 <b>Toque ou arraste</b> o triângulo abaixo para a caixa correspondente à sua classificação correta!
+            </p>
+
+            <!-- Card Triangle Area -->
+            <div class="bg-slate-900/80 border-2 border-dashed border-purple-500/40 rounded-2xl p-4 flex flex-col items-center justify-center relative min-h-[200px]">
+                <div id="classifierTriangleCard" class="cursor-pointer transition-transform duration-200 active:scale-95 touch-none flex flex-col items-center">
+                    <canvas id="classifierCanvas" width="220" height="150" class="drop-shadow-lg"></canvas>
+                    <div id="classifierSpecs" class="mt-2 text-xs font-outfit bg-slate-800/90 px-3 py-1.5 rounded-xl border border-slate-700 text-slate-300 text-center">
+                        <!-- Triangle properties inserted here dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Target Drop Buckets -->
+            <div id="classifierBuckets" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <!-- Dynamic Buckets will be populated by JavaScript -->
+            </div>
+        </section>
+
+        <section id="section-quiz" class="game-section hidden flex-col gap-3">
+            <!-- Quiz Bar -->
+            <div class="bg-slate-800/80 border border-slate-700 p-3 rounded-2xl flex items-center justify-between">
+                <!-- Hearts / Lives -->
+                <div class="flex items-center gap-1" id="quizLives">
+                    <i class="fa-solid fa-heart text-red-500 text-lg"></i>
+                    <i class="fa-solid fa-heart text-red-500 text-lg"></i>
+                    <i class="fa-solid fa-heart text-red-500 text-lg"></i>
+                </div>
+                
+                <div class="text-xs font-bold text-slate-400">
+                    Pergunta <span id="quizCurrentNum" class="text-purple-400 text-sm">1</span> / <span id="quizTotalNum">5</span>
+                </div>
+
+                <div class="flex items-center gap-1.5 bg-slate-900 px-3 py-1 rounded-lg border border-slate-700">
+                    <i class="fa-solid fa-fire text-amber-500 text-sm"></i>
+                    <span id="quizCombo" class="font-outfit font-extrabold text-xs text-amber-400">Combo x1</span>
+                </div>
+            </div>
+
+            <!-- Question Card -->
+            <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-4 sm:p-5 flex flex-col gap-4 shadow-xl">
+                <div class="flex flex-col sm:flex-row items-center gap-4">
+                    <!-- Quiz Triangle Illustration Canvas -->
+                    <div class="bg-slate-900 rounded-xl p-2 border border-slate-700/80 shrink-0">
+                        <canvas id="quizCanvas" width="180" height="130"></canvas>
+                    </div>
+
+                    <div class="flex-1 text-center sm:text-left">
+                        <span class="bg-purple-900/60 border border-purple-500/40 text-purple-300 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md">Desafio do Detetive</span>
+                        <h3 id="quizQuestionText" class="font-outfit font-bold text-base sm:text-lg text-white mt-2">
+                            Qual é a classificação completa deste triângulo?
+                        </h3>
+                        <p id="quizQuestionSub" class="text-xs text-slate-400 mt-1">
+                            Lados: 6 cm, 6 cm, 6 cm | Ângulos: 60°, 60°, 60°
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Answer Options Grid -->
+                <div id="quizOptions" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-2">
+                    <!-- Dynamic Buttons -->
+                </div>
+
+                <!-- Feedback Banner -->
+                <div id="quizFeedback" class="hidden p-3 rounded-xl border text-xs sm:text-sm font-semibold flex items-center gap-2">
+                    <!-- Injected dynamically -->
+                </div>
+            </div>
+        </section>
+
+        <section id="section-badges" class="game-section hidden flex-col gap-3">
+            <div class="bg-slate-800/80 border border-slate-700 p-4 rounded-2xl text-center">
+                <h2 class="font-outfit font-extrabold text-xl text-amber-400">Mural de Conquistas</h2>
+                <p class="text-xs text-slate-400 mt-1">Complete missões, desafios e quizes para desbloquear todas as medalhas!</p>
+            </div>
+
+            <div id="badgesGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <!-- Populated dynamically via JS -->
+            </div>
+        </section>
+
+    </main>
+
+    <div id="almanacModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-5">
+        <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            <!-- Modal Header -->
+            <div class="bg-slate-800 px-5 py-4 border-b border-slate-700 flex items-center justify-between">
+                <div class="flex items-center gap-2 text-cyan-400 font-outfit font-bold text-lg">
+                    <i class="fa-solid fa-book-bookmark"></i>
+                    <span>Almanaque dos Triângulos</span>
+                </div>
+                <button onclick="toggleAlmanac(false)" class="w-8 h-8 rounded-full bg-slate-700/60 hover:bg-slate-700 text-slate-300 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Modal Content (Scrollable) -->
+            <div class="p-5 overflow-y-auto space-y-6 text-slate-200 text-sm">
+                
+                <!-- Classification by Sides -->
+                <div>
+                    <h3 class="font-outfit font-bold text-base text-purple-400 border-b border-slate-800 pb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-ruler-horizontal"></i> 1. Quanto ao Comprimento dos LADOS
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+                        <div class="bg-slate-800/60 p-3 rounded-2xl border border-slate-700/60 text-center">
+                            <div class="font-bold text-amber-400">Equilátero</div>
+                            <p class="text-[11px] text-slate-400 mt-1">Todos os <b>3 lados iguais</b> (mesma medida).</p>
+                        </div>
+                        <div class="bg-slate-800/60 p-3 rounded-2xl border border-slate-700/60 text-center">
+                            <div class="font-bold text-pink-400">Isósceles</div>
+                            <p class="text-[11px] text-slate-400 mt-1">Possui <b>2 lados iguais</b> e 1 diferente.</p>
+                        </div>
+                        <div class="bg-slate-800/60 p-3 rounded-2xl border border-slate-700/60 text-center">
+                            <div class="font-bold text-cyan-400">Escaleno</div>
+                            <p class="text-[11px] text-slate-400 mt-1">Todos os <b>3 lados diferentes</b>.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Classification by Angles -->
+                <div>
+                    <h3 class="font-outfit font-bold text-base text-emerald-400 border-b border-slate-800 pb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-compass"></i> 2. Quanto às Medidas dos ÂNGULOS
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+                        <div class="bg-slate-800/60 p-3 rounded-2xl border border-slate-700/60 text-center">
+                            <div class="font-bold text-emerald-400">Acutângulo</div>
+                            <p class="text-[11px] text-slate-400 mt-1">Possui <b>3 ângulos agudos</b> (todos menores que 90°).</p>
+                        </div>
+                        <div class="bg-slate-800/60 p-3 rounded-2xl border border-slate-700/60 text-center">
+                            <div class="font-bold text-amber-400">Retângulo</div>
+                            <p class="text-[11px] text-slate-400 mt-1">Possui exatamente <b>1 ângulo reto</b> (igual a 90°).</p>
+                        </div>
+                        <div class="bg-slate-800/60 p-3 rounded-2xl border border-slate-700/60 text-center">
+                            <div class="font-bold text-purple-400">Obtusângulo</div>
+                            <p class="text-[11px] text-slate-400 mt-1">Possui <b>1 ângulo obtuso</b> (maior que 90°).</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dica de Ouro -->
+                <div class="bg-purple-950/40 border border-purple-500/30 p-3.5 rounded-2xl flex items-start gap-3">
+                    <i class="fa-solid fa-lightbulb text-amber-400 text-xl mt-0.5"></i>
+                    <div class="text-xs text-purple-200">
+                        <b>Regra de Ouro da Geometria:</b> A soma dos três ângulos internos de qualquer triângulo é SEMPRE igual a <b>180°</b>!
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="bg-slate-800 px-5 py-3 border-t border-slate-700 flex justify-end">
+                <button onclick="toggleAlmanac(false)" class="px-5 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-sm rounded-xl active:scale-95 transition">
+                    Entendi, Vamos Jogar!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="victoryModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border-2 border-amber-500/50 rounded-3xl max-w-md w-full p-6 text-center shadow-2xl relative animate-float">
+            <div class="w-20 h-20 bg-gradient-to-tr from-amber-400 to-yellow-300 rounded-3xl mx-auto flex items-center justify-center text-slate-900 text-4xl shadow-lg shadow-amber-500/30 -mt-12 border-4 border-slate-900">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+
+            <h2 id="victoryTitle" class="font-outfit font-extrabold text-2xl text-white mt-4">Excelente Trabalho!</h2>
+            <p id="victorySubtitle" class="text-sm text-slate-300 mt-1">Você concluiu o desafio com sucesso!</p>
+
+            <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-4 my-5 flex justify-around">
+                <div>
+                    <span class="text-[10px] uppercase font-bold text-slate-400 block">Pontuação</span>
+                    <span id="victoryScore" class="font-outfit font-extrabold text-xl text-amber-400">+100</span>
+                </div>
+                <div class="border-r border-slate-700"></div>
+                <div>
+                    <span class="text-[10px] uppercase font-bold text-slate-400 block">Precisão</span>
+                    <span id="victoryAccuracy" class="font-outfit font-extrabold text-xl text-emerald-400">100%</span>
+                </div>
+            </div>
+
+            <button onclick="closeVictoryModal()" class="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-outfit font-bold rounded-xl shadow-lg shadow-emerald-500/25 active:scale-95 transition">
+                Continuar
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer Credit -->
+    <footer class="bg-slate-900/80 border-t border-slate-800 py-2.5 text-center text-[11px] text-slate-500">
+        Mestre dos Triângulos • Recursos Educativos de Geometria 6º Ano
+    </footer>
+
+    <script>
+        let soundEnabled = true;
+        let audioCtx = null;
+
+        function getAudioContext() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) audioCtx = new AudioContextClass();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const btn = document.getElementById('soundBtn');
+            btn.innerHTML = soundEnabled ? '<i class="fa-solid fa-volume-high"></i>' : '<i class="fa-solid fa-volume-xmark text-red-400"></i>';
+            if (soundEnabled) playSound('click');
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            try {
+                const ctx = getAudioContext();
+                if (!ctx) return;
+
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                const now = ctx.currentTime;
+
+                if (type === 'click') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(600, now);
+                    osc.frequency.exponentialRampToValueAtTime(800, now + 0.05);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.linearRampToValueAtTime(0, now + 0.05);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                } else if (type === 'correct') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, now); // C5
+                    osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+                    osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else if (type === 'error') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, now);
+                    osc.frequency.linearRampToValueAtTime(110, now + 0.2);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0, now + 0.2);
+                    osc.start(now);
+                    osc.stop(now + 0.2);
+                } else if (type === 'win') {
+                    const notes = [523.25, 659.25, 783.99, 1046.50];
+                    notes.forEach((freq, idx) => {
+                        const o = ctx.createOscillator();
+                        const g = ctx.createGain();
+                        o.connect(g);
+                        g.connect(ctx.destination);
+                        o.frequency.value = freq;
+                        g.gain.setValueAtTime(0.2, now + idx * 0.1);
+                        g.gain.linearRampToValueAtTime(0, now + idx * 0.1 + 0.25);
+                        o.start(now + idx * 0.1);
+                        o.stop(now + idx * 0.1 + 0.25);
+                    });
+                }
+            } catch (e) {
+                console.warn('Audio play error:', e);
+            }
+        }
+
+        const gameState = {
+            score: 0,
+            activeTab: 'lab',
+            labMissionIdx: 0,
+            classifierIdx: 0,
+            classifierScore: 0,
+            quizIdx: 0,
+            quizLives: 3,
+            quizCombo: 1,
+            quizScore: 0,
+            badges: {
+                labMaster: false,
+                classifierMaster: false,
+                quizMaster: false,
+                geometryHero: false
+            }
+        };
+
+        const BADGES_DATA = [
+            { id: 'labMaster', title: 'Arquiteto de Triângulos', desc: 'Conclua todas as missões de construção no Laboratório.', icon: 'fa-compass-drafting', color: 'from-purple-500 to-pink-500' },
+            { id: 'classifierMaster', title: 'Detetive de Lados & Ângulos', desc: 'Acerte a classificação rápida de 5 triângulos.', icon: 'fa-boxes-stacked', color: 'from-cyan-500 to-blue-500' },
+            { id: 'quizMaster', title: 'Gênio da Geometria', desc: 'Vença o Quiz do Detetive sem perder todas as vidas.', icon: 'fa-brain', color: 'from-amber-500 to-orange-500' },
+            { id: 'geometryHero', title: 'Mestre Supremo', desc: 'Acumule mais de 500 pontos totais no jogo.', icon: 'fa-crown', color: 'from-emerald-500 to-teal-500' }
+        ];
+
+        function switchTab(tabId) {
+            playSound('click');
+            gameState.activeTab = tabId;
+
+            document.querySelectorAll('.game-section').forEach(sec => sec.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-gradient-to-r', 'from-purple-600', 'to-pink-600', 'text-white', 'shadow-md');
+                btn.classList.add('text-slate-400', 'hover:text-slate-200');
+            });
+
+            const activeBtn = document.getElementById(`tab-${tabId}`);
+            if (activeBtn) {
+                activeBtn.classList.add('bg-gradient-to-r', 'from-purple-600', 'to-pink-600', 'text-white', 'shadow-md');
+                activeBtn.classList.remove('text-slate-400');
+            }
+
+            const activeSec = document.getElementById(`section-${tabId}`);
+            if (activeSec) activeSec.classList.remove('hidden');
+
+            if (tabId === 'lab') {
+                resizeLabCanvas();
+                drawLabTriangle();
+            } else if (tabId === 'classifier') {
+                loadClassifierItem();
+            } else if (tabId === 'quiz') {
+                loadQuizQuestion();
+            } else if (tabId === 'badges') {
+                renderBadges();
+            }
+        }
+
+        function toggleAlmanac(show) {
+            playSound('click');
+            const modal = document.getElementById('almanacModal');
+            if (show) modal.classList.remove('hidden');
+            else modal.classList.add('hidden');
+        }
+
+        function addScore(points) {
+            gameState.score += points;
+            document.getElementById('globalScore').innerText = gameState.score;
+            checkBadges();
+        }
+
+        function getDistance(p1, p2) {
+            return Math.hypot(p2.x - p1.x, p2.y - p1.y);
+        }
+
+        function getAngleDegrees(A, B, C) {
+            // Angle at vertex B given points A, B, C
+            const a = getDistance(B, C);
+            const b = getDistance(A, C);
+            const c = getDistance(A, B);
+            if (a === 0 || c === 0) return 0;
+            let val = (a * a + c * c - b * b) / (2 * a * c);
+            val = Math.max(-1, Math.min(1, val));
+            return Math.round(Math.acos(val) * (180 / Math.PI));
+        }
+
+        function classifyTriangleBySides(s1, s2, s3) {
+            const tol = 12; // Pixel tolerance for touch
+            const diff12 = Math.abs(s1 - s2);
+            const diff23 = Math.abs(s2 - s3);
+            const diff13 = Math.abs(s1 - s3);
+
+            if (diff12 <= tol && diff23 <= tol && diff13 <= tol) {
+                return 'Equilátero';
+            } else if (diff12 <= tol || diff23 <= tol || diff13 <= tol) {
+                return 'Isósceles';
+            } else {
+                return 'Escaleno';
+            }
+        }
+
+        function classifyTriangleByAngles(angA, angB, angC) {
+            const maxAng = Math.max(angA, angB, angC);
+            if (Math.abs(maxAng - 90) <= 4) {
+                return 'Retângulo';
+            } else if (maxAng > 94) {
+                return 'Obtusângulo';
+            } else {
+                return 'Acutângulo';
+            }
+        }
+
+        const labCanvas = document.getElementById('labCanvas');
+        const labCtx = labCanvas.getContext('2d');
+
+        const LAB_MISSIONS = [
+            { reqSides: 'Isósceles', reqAngles: 'Retângulo', text: 'Crie um Triângulo RETÂNGULO e ISÓSCELES!' },
+            { reqSides: 'Equilátero', reqAngles: 'Acutângulo', text: 'Crie um Triângulo EQUILÁTERO!' },
+            { reqSides: 'Isósceles', reqAngles: 'Obtusângulo', text: 'Crie um Triângulo OBTUSÂNGULO e ISÓSCELES!' },
+            { reqSides: 'Escaleno', reqAngles: 'Retângulo', text: 'Crie um Triângulo RETÂNGULO e ESCALENO!' },
+            { reqSides: 'Escaleno', reqAngles: 'Acutângulo', text: 'Crie um Triângulo ACUTÂNGULO e ESCALENO!' }
+        ];
+
+        let labVertices = [
+            { x: 100, y: 240, label: 'A' },
+            { x: 260, y: 240, label: 'B' },
+            { x: 100, y: 90,  label: 'C' }
+        ];
+
+        let activeVertexIdx = null;
+
+        function resizeLabCanvas() {
+            const container = labCanvas.parentElement;
+            if (container && container.clientWidth > 0) {
+                labCanvas.width = container.clientWidth;
+                labCanvas.height = Math.min(380, container.clientWidth * 0.7);
+                drawLabTriangle();
+            }
+        }
+
+        function resetLabCanvas() {
+            playSound('click');
+            const w = labCanvas.width || 300;
+            const h = labCanvas.height || 250;
+            labVertices = [
+                { x: w * 0.25, y: h * 0.75, label: 'A' },
+                { x: w * 0.75, y: h * 0.75, label: 'B' },
+                { x: w * 0.35, y: h * 0.25, label: 'C' }
+            ];
+            drawLabTriangle();
+        }
+
+        function drawLabTriangle() {
+            if (!labCtx) return;
+            const w = labCanvas.width;
+            const h = labCanvas.height;
+            labCtx.clearRect(0, 0, w, h);
+
+            const [A, B, C] = labVertices;
+
+            // Calculate lengths (scale pixel to approx cm)
+            const sideAB = Math.round(getDistance(A, B) / 15);
+            const sideBC = Math.round(getDistance(B, C) / 15);
+            const sideCA = Math.round(getDistance(C, A) / 15);
+
+            // Calculate angles
+            const angleA = getAngleDegrees(B, A, C);
+            const angleB = getAngleDegrees(A, B, C);
+            const angleC = 180 - (angleA + angleB);
+
+            // Update UI drawer metrics
+            document.getElementById('labSideAB').innerText = sideAB;
+            document.getElementById('labSideBC').innerText = sideBC;
+            document.getElementById('labSideCA').innerText = sideCA;
+
+            document.getElementById('labAngleA').innerText = angleA + '°';
+            document.getElementById('labAngleB').innerText = angleB + '°';
+            document.getElementById('labAngleC').innerText = angleC + '°';
+
+            const currentSides = classifyTriangleBySides(getDistance(A, B), getDistance(B, C), getDistance(C, A));
+            const currentAngles = classifyTriangleByAngles(angleA, angleB, angleC);
+
+            document.getElementById('labCurrentSides').innerText = 'Lados: ' + currentSides;
+            document.getElementById('labCurrentAngles').innerText = 'Ângulos: ' + currentAngles;
+
+            // Draw Triangle Grid lines background
+            labCtx.strokeStyle = 'rgba(51, 65, 85, 0.3)';
+            labCtx.lineWidth = 1;
+            const gridSize = 20;
+            for (let x = 0; x < w; x += gridSize) {
+                labCtx.beginPath(); labCtx.moveTo(x, 0); labCtx.lineTo(x, h); labCtx.stroke();
+            }
+            for (let y = 0; y < h; y += gridSize) {
+                labCtx.beginPath(); labCtx.moveTo(0, y); labCtx.lineTo(w, y); labCtx.stroke();
+            }
+
+            // Fill Triangle Area
+            labCtx.beginPath();
+            labCtx.moveTo(A.x, A.y);
+            labCtx.lineTo(B.x, B.y);
+            labCtx.lineTo(C.x, C.y);
+            labCtx.closePath();
+            labCtx.fillStyle = 'rgba(139, 92, 246, 0.15)';
+            labCtx.fill();
+            labCtx.strokeStyle = '#A855F7';
+            labCtx.lineWidth = 3;
+            labCtx.stroke();
+
+            // Draw Angle Arcs
+            drawAngleArc(A, B, C, angleA, '#EC4899');
+            drawAngleArc(B, C, A, angleB, '#EC4899');
+            drawAngleArc(C, A, B, angleC, '#EC4899');
+
+            // Draw Vertices Handle Nodes
+            labVertices.forEach((v, idx) => {
+                const isHovered = activeVertexIdx === idx;
+                
+                // Outer glow
+                labCtx.beginPath();
+                labCtx.arc(v.x, v.y, isHovered ? 22 : 16, 0, Math.PI * 2);
+                labCtx.fillStyle = isHovered ? 'rgba(236, 72, 153, 0.4)' : 'rgba(6, 182, 212, 0.3)';
+                labCtx.fill();
+
+                // Inner circle
+                labCtx.beginPath();
+                labCtx.arc(v.x, v.y, 10, 0, Math.PI * 2);
+                labCtx.fillStyle = isHovered ? '#EC4899' : '#06B6D4';
+                labCtx.fill();
+                labCtx.strokeStyle = '#FFFFFF';
+                labCtx.lineWidth = 2;
+                labCtx.stroke();
+
+                // Vertex Text Label
+                labCtx.fillStyle = '#FFFFFF';
+                labCtx.font = 'bold 12px Fredoka';
+                labCtx.textAlign = 'center';
+                labCtx.textBaseline = 'middle';
+                labCtx.fillText(v.label, v.x, v.y);
+            });
+        }
+
+        function drawAngleArc(v, p2, p3, angleVal, color) {
+            const radius = 22;
+            const angle1 = Math.atan2(p2.y - v.y, p2.x - v.x);
+            const angle2 = Math.atan2(p3.y - v.y, p3.x - v.x);
+
+            labCtx.beginPath();
+            labCtx.arc(v.x, v.y, radius, angle1, angle2);
+            labCtx.strokeStyle = color;
+            labCtx.lineWidth = 2;
+            labCtx.stroke();
+        }
+
+        /* Pointer events for smooth touch dragging on Canvas */
+        labCanvas.addEventListener('pointerdown', (e) => {
+            const rect = labCanvas.getBoundingClientRect();
+            const touchX = e.clientX - rect.left;
+            const touchY = e.clientY - rect.top;
+
+            // Check if user tapped close to any vertex
+            labVertices.forEach((v, idx) => {
+                if (Math.hypot(v.x - touchX, v.y - touchY) < 35) {
+                    activeVertexIdx = idx;
+                    labCanvas.setPointerCapture(e.pointerId);
+                    playSound('click');
+                }
+            });
+        });
+
+        labCanvas.addEventListener('pointermove', (e) => {
+            if (activeVertexIdx !== null) {
+                const rect = labCanvas.getBoundingClientRect();
+                const margin = 15;
+                const touchX = Math.max(margin, Math.min(labCanvas.width - margin, e.clientX - rect.left));
+                const touchY = Math.max(margin, Math.min(labCanvas.height - margin, e.clientY - rect.top));
+
+                labVertices[activeVertexIdx].x = touchX;
+                labVertices[activeVertexIdx].y = touchY;
+                drawLabTriangle();
+            }
+        });
+
+        const releasePointer = (e) => {
+            if (activeVertexIdx !== null) {
+                activeVertexIdx = null;
+                try { labCanvas.releasePointerCapture(e.pointerId); } catch(err){}
+                drawLabTriangle();
+            }
+        };
+
+        labCanvas.addEventListener('pointerup', releasePointer);
+        labCanvas.addEventListener('pointercancel', releasePointer);
+
+        function checkLabMission() {
+            const [A, B, C] = labVertices;
+            const sideAB = getDistance(A, B);
+            const sideBC = getDistance(B, C);
+            const sideCA = getDistance(C, A);
+
+            const angleA = getAngleDegrees(B, A, C);
+            const angleB = getAngleDegrees(A, B, C);
+            const angleC = 180 - (angleA + angleB);
+
+            const currentSides = classifyTriangleBySides(sideAB, sideBC, sideCA);
+            const currentAngles = classifyTriangleByAngles(angleA, angleB, angleC);
+
+            const mission = LAB_MISSIONS[gameState.labMissionIdx];
+
+            if (currentSides === mission.reqSides && currentAngles === mission.reqAngles) {
+                playSound('correct');
+                triggerConfetti();
+                addScore(100);
+
+                if (gameState.labMissionIdx < LAB_MISSIONS.length - 1) {
+                    gameState.labMissionIdx++;
+                    showVictoryModal('Missão Cumprida!', `Você criou com sucesso um triângulo ${mission.reqSides} e ${mission.reqAngles}!`);
+                    updateLabMissionUI();
+                } else {
+                    gameState.badges.labMaster = true;
+                    showVictoryModal('Mestre do Laboratório!', 'Você completou TODAS as missões de construção de triângulos!');
+                }
+            } else {
+                playSound('error');
+                alert(`Ainda não! Você construiu um triângulo [${currentSides} - ${currentAngles}]. O desafio pede [${mission.reqSides} - ${mission.reqAngles}]. Ajuste os vértices!`);
+            }
+        }
+
+        function updateLabMissionUI() {
+            const mission = LAB_MISSIONS[gameState.labMissionIdx];
+            document.getElementById('labMissionNumber').innerText = gameState.labMissionIdx + 1;
+            document.getElementById('labMissionText').innerText = mission.text;
+        }
+
+        const CLASSIFIER_ITEMS = [
+            { type: 'sides', name: 'Equilátero', specs: 'Lados: 8cm, 8cm, 8cm', triangle: { a: 60, b: 60, c: 60 } },
+            { type: 'sides', name: 'Isósceles', specs: 'Lados: 10cm, 10cm, 6cm', triangle: { a: 70, b: 70, c: 40 } },
+            { type: 'sides', name: 'Escaleno', specs: 'Lados: 5cm, 8cm, 11cm', triangle: { a: 30, b: 50, c: 100 } },
+            { type: 'angles', name: 'Retângulo', specs: 'Ângulos: 90°, 45°, 45°', triangle: { a: 90, b: 45, c: 45 } },
+            { type: 'angles', name: 'Acutângulo', specs: 'Ângulos: 70°, 60°, 50°', triangle: { a: 70, b: 60, c: 50 } },
+            { type: 'angles', name: 'Obtusângulo', specs: 'Ângulos: 120°, 30°, 30°', triangle: { a: 120, b: 30, c: 30 } }
+        ];
+
+        function loadClassifierItem() {
+            const item = CLASSIFIER_ITEMS[gameState.classifierIdx % CLASSIFIER_ITEMS.length];
+            const modeText = item.type === 'sides' ? 'Classifique quanto aos LADOS' : 'Classifique quanto aos ÂNGULOS';
+            document.getElementById('classifierCategoryMode').innerText = modeText;
+            document.getElementById('classifierScore').innerText = `${gameState.classifierScore}/5`;
+            document.getElementById('classifierSpecs').innerText = item.specs;
+
+            drawStaticTriangle('classifierCanvas', item.triangle);
+            renderClassifierBuckets(item.type);
+        }
+
+        function renderClassifierBuckets(type) {
+            const container = document.getElementById('classifierBuckets');
+            container.innerHTML = '';
+
+            const buckets = type === 'sides' 
+                ? [
+                    { label: 'Equilátero', color: 'from-amber-600 to-yellow-600' },
+                    { label: 'Isósceles', color: 'from-pink-600 to-rose-600' },
+                    { label: 'Escaleno', color: 'from-cyan-600 to-blue-600' }
+                ]
+                : [
+                    { label: 'Acutângulo', color: 'from-emerald-600 to-teal-600' },
+                    { label: 'Retângulo', color: 'from-amber-600 to-orange-600' },
+                    { label: 'Obtusângulo', color: 'from-purple-600 to-indigo-600' }
+                ];
+
+            buckets.forEach(b => {
+                const btn = document.createElement('button');
+                btn.className = `p-4 rounded-2xl bg-gradient-to-r ${b.color} font-outfit font-extrabold text-base text-white shadow-lg border border-white/20 active:scale-95 transition flex flex-col items-center justify-center gap-1`;
+                btn.innerHTML = `<i class="fa-solid fa-box-archive text-xl mb-1"></i> ${b.label}`;
+                btn.onclick = () => submitClassifierChoice(b.label);
+                container.appendChild(btn);
+            });
+        }
+
+        function submitClassifierChoice(choice) {
+            const item = CLASSIFIER_ITEMS[gameState.classifierIdx % CLASSIFIER_ITEMS.length];
+            if (choice === item.name) {
+                playSound('correct');
+                triggerConfetti();
+                addScore(50);
+                gameState.classifierScore++;
+
+                if (gameState.classifierScore >= 5) {
+                    gameState.badges.classifierMaster = true;
+                    showVictoryModal('Mestre Classificador!', 'Você acertou 5 classificações consecutivas!');
+                }
+
+                gameState.classifierIdx++;
+                loadClassifierItem();
+            } else {
+                playSound('error');
+                alert(`Ops! Este triângulo é um ${item.name} (${item.specs}). Tente novamente!`);
+            }
+        }
+
+        const QUIZ_QUESTIONS = [
+            {
+                q: 'Um triângulo possui lados medindo 7cm, 7cm e 7cm. Como ele se classifica quanto aos lados?',
+                sub: 'Propriedade: Todos os lados iguais.',
+                options: ['Equilátero', 'Isósceles', 'Escaleno', 'Retângulo'],
+                correct: 0,
+                triangle: { a: 60, b: 60, c: 60 }
+            },
+            {
+                q: 'Um triângulo tem ângulos internos de 90°, 60° e 30°. Ele é um triângulo:',
+                sub: 'Possui 1 ângulo de 90° (reto).',
+                options: ['Acutângulo', 'Retângulo', 'Obtusângulo', 'Equilátero'],
+                correct: 1,
+                triangle: { a: 90, b: 60, c: 30 }
+            },
+            {
+                q: 'Qual é a classificação COMPLETA de um triângulo com lados 6cm, 6cm, 10cm e um ângulo de 110°?',
+                sub: 'Analise os lados e depois os ângulos.',
+                options: ['Isósceles e Obtusângulo', 'Equilátero e Acutângulo', 'Escaleno e Retângulo', 'Isósceles e Acutângulo'],
+                correct: 0,
+                triangle: { a: 110, b: 35, c: 35 }
+            },
+            {
+                q: 'Um triângulo tem todos os três ângulos menores que 90° (ex: 70°, 60°, 50°). Ele é:',
+                sub: 'Três ângulos agudos.',
+                options: ['Retângulo', 'Obtusângulo', 'Acutângulo', 'Escaleno'],
+                correct: 2,
+                triangle: { a: 70, b: 60, c: 50 }
+            }
+        ];
+
+        function loadQuizQuestion() {
+            const q = QUIZ_QUESTIONS[gameState.quizIdx % QUIZ_QUESTIONS.length];
+            document.getElementById('quizCurrentNum').innerText = (gameState.quizIdx % QUIZ_QUESTIONS.length) + 1;
+            document.getElementById('quizTotalNum').innerText = QUIZ_QUESTIONS.length;
+            document.getElementById('quizQuestionText').innerText = q.q;
+            document.getElementById('quizQuestionSub').innerText = q.sub;
+            document.getElementById('quizCombo').innerText = `Combo x${gameState.quizCombo}`;
+
+            drawStaticTriangle('quizCanvas', q.triangle);
+
+            const optionsContainer = document.getElementById('quizOptions');
+            optionsContainer.innerHTML = '';
+
+            document.getElementById('quizFeedback').classList.add('hidden');
+
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'p-3.5 bg-slate-700/70 hover:bg-purple-600/40 border border-slate-600 rounded-xl font-outfit font-semibold text-sm text-left text-slate-100 transition active:scale-95 flex items-center gap-3';
+                btn.innerHTML = `<span class="w-6 h-6 rounded-lg bg-slate-800 border border-slate-600 flex items-center justify-center text-xs font-bold text-purple-300">${String.fromCharCode(65 + idx)}</span> ${opt}`;
+                btn.onclick = () => answerQuiz(idx);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function answerQuiz(selectedIdx) {
+            const q = QUIZ_QUESTIONS[gameState.quizIdx % QUIZ_QUESTIONS.length];
+            const feedback = document.getElementById('quizFeedback');
+            feedback.classList.remove('hidden');
+
+            if (selectedIdx === q.correct) {
+                playSound('correct');
+                triggerConfetti();
+                const points = 80 * gameState.quizCombo;
+                addScore(points);
+                gameState.quizCombo++;
+
+                feedback.className = 'p-3 rounded-xl border border-emerald-500/50 bg-emerald-950/60 text-emerald-300 text-xs sm:text-sm font-semibold flex items-center gap-2';
+                feedback.innerHTML = `<i class="fa-solid fa-circle-check text-lg"></i> Resposta Correta! +${points} pontos.`;
+
+                setTimeout(() => {
+                    gameState.quizIdx++;
+                    if (gameState.quizIdx >= QUIZ_QUESTIONS.length) {
+                        gameState.badges.quizMaster = true;
+                        showVictoryModal('Gênio do Quiz!', 'Você concluiu o Quiz com sucesso!');
+                    } else {
+                        loadQuizQuestion();
+                    }
+                }, 1500);
+
+            } else {
+                playSound('error');
+                gameState.quizCombo = 1;
+                gameState.quizLives--;
+
+                updateQuizLivesUI();
+
+                feedback.className = 'p-3 rounded-xl border border-red-500/50 bg-red-950/60 text-red-300 text-xs sm:text-sm font-semibold flex items-center gap-2';
+                feedback.innerHTML = `<i class="fa-solid fa-circle-xmark text-lg"></i> Incorreto! A resposta certa era: <b>${q.options[q.correct]}</b>.`;
+
+                if (gameState.quizLives <= 0) {
+                    setTimeout(() => {
+                        alert('Fim de Jogo no Quiz! Vamos reiniciar suas vidas.');
+                        gameState.quizLives = 3;
+                        gameState.quizIdx = 0;
+                        updateQuizLivesUI();
+                        loadQuizQuestion();
+                    }, 1500);
+                }
+            }
+        }
+
+        function updateQuizLivesUI() {
+            const container = document.getElementById('quizLives');
+            container.innerHTML = '';
+            for (let i = 0; i < 3; i++) {
+                const heart = document.createElement('i');
+                heart.className = i < gameState.quizLives 
+                    ? 'fa-solid fa-heart text-red-500 text-lg' 
+                    : 'fa-regular fa-heart text-slate-600 text-lg';
+                container.appendChild(heart);
+            }
+        }
+
+        function drawStaticTriangle(canvasId, angles) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            // Compute triangle vertices from given angles roughly centered
+            const p1 = { x: w * 0.2, y: h * 0.8 };
+            const p2 = { x: w * 0.8, y: h * 0.8 };
+            
+            // Third point based on main angle
+            let p3X = w * 0.5;
+            let p3Y = h * 0.2;
+
+            if (angles.a === 90) { // Right triangle
+                p3X = p1.x;
+            } else if (angles.a > 90) { // Obtuse
+                p3X = w * 0.08;
+            }
+
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.lineTo(p3X, p3Y);
+            ctx.closePath();
+
+            ctx.fillStyle = 'rgba(6, 182, 212, 0.2)';
+            ctx.fill();
+            ctx.strokeStyle = '#06B6D4';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // Vertices dots
+            [p1, p2, {x: p3X, y: p3Y}].forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+                ctx.fillStyle = '#EC4899';
+                ctx.fill();
+            });
+        }
+
+        function checkBadges() {
+            if (gameState.score >= 500) {
+                gameState.badges.geometryHero = true;
+            }
+        }
+
+        function renderBadges() {
+            const grid = document.getElementById('badgesGrid');
+            grid.innerHTML = '';
+
+            BADGES_DATA.forEach(b => {
+                const unlocked = gameState.badges[b.id];
+                const card = document.createElement('div');
+                card.className = `p-4 rounded-2xl border transition flex flex-col items-center text-center ${
+                    unlocked 
+                        ? 'bg-slate-800/90 border-amber-500/50 shadow-lg shadow-amber-500/10' 
+                        : 'bg-slate-900/50 border-slate-800 opacity-60'
+                }`;
+
+                card.innerHTML = `
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr ${b.color} flex items-center justify-center text-2xl text-white shadow-md mb-2 ${unlocked ? 'animate-bounce' : 'grayscale'}">
+                        <i class="fa-solid ${b.icon}"></i>
+                    </div>
+                    <div class="font-outfit font-bold text-sm text-white">${b.title}</div>
+                    <p class="text-[11px] text-slate-400 mt-1">${b.desc}</p>
+                    <span class="mt-3 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${unlocked ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-slate-800 text-slate-500'}">
+                        ${unlocked ? 'Desbloqueado!' : 'Bloqueado'}
+                    </span>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function triggerConfetti() {
+            const canvas = document.getElementById('confettiCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const pieces = [];
+            const colors = ['#8B5CF6', '#EC4899', '#06B6D4', '#F59E0B', '#10B981'];
+
+            for (let i = 0; i < 60; i++) {
+                pieces.push({
+                    x: canvas.width / 2,
+                    y: canvas.height / 2,
+                    vx: (Math.random() - 0.5) * 12,
+                    vy: (Math.random() - 0.8) * 12,
+                    size: Math.random() * 8 + 4,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    rotation: Math.random() * 360
+                });
+            }
+
+            let frames = 0;
+            function animateConfetti() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                pieces.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.2; // gravity
+                    p.rotation += 4;
+
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate((p.rotation * Math.PI) / 180);
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                    ctx.restore();
+                });
+
+                frames++;
+                if (frames < 70) {
+                    requestAnimationFrame(animateConfetti);
+                } else {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            }
+            animateConfetti();
+        }
+
+        function showVictoryModal(title, subtitle) {
+            playSound('win');
+            document.getElementById('victoryTitle').innerText = title;
+            document.getElementById('victorySubtitle').innerText = subtitle;
+            document.getElementById('victoryScore').innerText = `+${gameState.score}`;
+            document.getElementById('victoryModal').classList.remove('hidden');
+        }
+
+        function closeVictoryModal() {
+            playSound('click');
+            document.getElementById('victoryModal').classList.add('hidden');
+        }
+
+        window.addEventListener('load', () => {
+            resizeLabCanvas();
+            window.addEventListener('resize', resizeLabCanvas);
+            updateLabMissionUI();
+            drawLabTriangle();
+        });
+    </script>
+</body>
+</html>
