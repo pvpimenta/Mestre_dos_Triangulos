@@ -53,6 +53,36 @@
 
         .touch-canvas {
             touch-action: none;
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        /* Interação de arraste otimizada para telas sensíveis ao toque */
+        .drag-source {
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        .drop-target {
+            transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+        }
+
+        .drop-target.drop-hover {
+            transform: scale(1.03);
+            filter: brightness(1.15);
+            box-shadow: 0 0 0 3px rgba(255,255,255,.25), 0 10px 30px rgba(0,0,0,.25);
+        }
+
+        .drag-ghost {
+            position: fixed;
+            z-index: 9999;
+            pointer-events: none;
+            transform: translate(-50%, -50%) scale(1.05);
+            opacity: .92;
+            filter: drop-shadow(0 12px 20px rgba(0,0,0,.35));
         }
 
         /* Neon Glow Effects */
@@ -185,7 +215,7 @@
                 </div>
 
                 <!-- Interactive Touch Canvas -->
-                <canvas id="labCanvas" class="touch-canvas w-full h-[320px] sm:h-[380px] cursor-crosshair"></canvas>
+                <canvas id="labCanvas" class="touch-canvas w-full aspect-[5/3] cursor-crosshair"></canvas>
 
                 <!-- Live Measurements Drawer -->
                 <div class="bg-slate-800/90 border-t border-slate-700/80 p-3 grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
@@ -241,7 +271,7 @@
 
             <!-- Card Triangle Area -->
             <div class="bg-slate-900/80 border-2 border-dashed border-purple-500/40 rounded-2xl p-4 flex flex-col items-center justify-center relative min-h-[200px]">
-                <div id="classifierTriangleCard" class="cursor-pointer transition-transform duration-200 active:scale-95 touch-none flex flex-col items-center">
+                <div id="classifierTriangleCard" class="cursor-grab active:cursor-grabbing cursor-pointer transition-transform duration-150 active:scale-95 touch-none select-none flex flex-col items-center">
                     <canvas id="classifierCanvas" width="220" height="150" class="drop-shadow-lg"></canvas>
                     <div id="classifierSpecs" class="mt-2 text-xs font-outfit bg-slate-800/90 px-3 py-1.5 rounded-xl border border-slate-700 text-slate-300 text-center">
                         <!-- Triangle properties inserted here dynamically -->
@@ -638,17 +668,55 @@
 
         function resizeLabCanvas() {
             const container = labCanvas.parentElement;
-            if (container && container.clientWidth > 0) {
-                labCanvas.width = container.clientWidth;
-                labCanvas.height = Math.min(380, container.clientWidth * 0.7);
-                drawLabTriangle();
+            if (!container || container.clientWidth <= 0) return;
+
+            // Mantém uma proporção estável no celular e evita que o canvas
+            // tenha uma resolução interna diferente do tamanho exibido.
+            const cssWidth = Math.max(280, container.clientWidth);
+            const cssHeight = Math.min(380, cssWidth * 0.6);
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+            labCanvas.style.width = cssWidth + 'px';
+            labCanvas.style.height = cssHeight + 'px';
+
+            labCanvas.width = Math.round(cssWidth * dpr);
+            labCanvas.height = Math.round(cssHeight * dpr);
+
+            // Passamos a desenhar em coordenadas CSS/lógicas.
+            labCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            labCanvas.dataset.logicalWidth = cssWidth;
+            labCanvas.dataset.logicalHeight = cssHeight;
+
+            // Se for o primeiro dimensionamento, posiciona os vértices
+            // proporcionalmente ao tamanho atual.
+            const oldW = Number(labCanvas.dataset.lastLogicalWidth || 0);
+            const oldH = Number(labCanvas.dataset.lastLogicalHeight || 0);
+
+            if (oldW > 0 && oldH > 0) {
+                const sx = cssWidth / oldW;
+                const sy = cssHeight / oldH;
+                labVertices.forEach(v => {
+                    v.x *= sx;
+                    v.y *= sy;
+                });
+            } else {
+                labVertices = [
+                    { x: cssWidth * 0.25, y: cssHeight * 0.75, label: 'A' },
+                    { x: cssWidth * 0.75, y: cssHeight * 0.75, label: 'B' },
+                    { x: cssWidth * 0.35, y: cssHeight * 0.25, label: 'C' }
+                ];
             }
+
+            labCanvas.dataset.lastLogicalWidth = cssWidth;
+            labCanvas.dataset.lastLogicalHeight = cssHeight;
+            drawLabTriangle();
         }
 
         function resetLabCanvas() {
             playSound('click');
-            const w = labCanvas.width || 300;
-            const h = labCanvas.height || 250;
+            const w = Number(labCanvas.dataset.logicalWidth) || labCanvas.clientWidth || 300;
+            const h = Number(labCanvas.dataset.logicalHeight) || labCanvas.clientHeight || 250;
+
             labVertices = [
                 { x: w * 0.25, y: h * 0.75, label: 'A' },
                 { x: w * 0.75, y: h * 0.75, label: 'B' },
@@ -659,8 +727,8 @@
 
         function drawLabTriangle() {
             if (!labCtx) return;
-            const w = labCanvas.width;
-            const h = labCanvas.height;
+            const w = Number(labCanvas.dataset.logicalWidth) || labCanvas.clientWidth || labCanvas.width;
+            const h = Number(labCanvas.dataset.logicalHeight) || labCanvas.clientHeight || labCanvas.height;
             labCtx.clearRect(0, 0, w, h);
 
             const [A, B, C] = labVertices;
@@ -758,45 +826,73 @@
             labCtx.stroke();
         }
 
-        /* Pointer events for smooth touch dragging on Canvas */
-        labCanvas.addEventListener('pointerdown', (e) => {
+        /* Pointer events robustos para mouse, caneta e toque no celular */
+        function getLabPointerPosition(e) {
             const rect = labCanvas.getBoundingClientRect();
-            const touchX = e.clientX - rect.left;
-            const touchY = e.clientY - rect.top;
+            return {
+                x: (e.clientX - rect.left) * (Number(labCanvas.dataset.logicalWidth) / rect.width),
+                y: (e.clientY - rect.top) * (Number(labCanvas.dataset.logicalHeight) / rect.height)
+            };
+        }
 
-            // Check if user tapped close to any vertex
+        labCanvas.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+
+            const { x, y } = getLabPointerPosition(e);
+            let closestIdx = -1;
+            let closestDist = Infinity;
+
+            // Área de toque maior: 44px é confortável em telas pequenas.
+            const hitRadius = e.pointerType === 'touch' ? 48 : 35;
+
             labVertices.forEach((v, idx) => {
-                if (Math.hypot(v.x - touchX, v.y - touchY) < 35) {
-                    activeVertexIdx = idx;
-                    labCanvas.setPointerCapture(e.pointerId);
-                    playSound('click');
+                const d = Math.hypot(v.x - x, v.y - y);
+                if (d < hitRadius && d < closestDist) {
+                    closestDist = d;
+                    closestIdx = idx;
                 }
             });
-        });
 
-        labCanvas.addEventListener('pointermove', (e) => {
-            if (activeVertexIdx !== null) {
-                const rect = labCanvas.getBoundingClientRect();
-                const margin = 15;
-                const touchX = Math.max(margin, Math.min(labCanvas.width - margin, e.clientX - rect.left));
-                const touchY = Math.max(margin, Math.min(labCanvas.height - margin, e.clientY - rect.top));
-
-                labVertices[activeVertexIdx].x = touchX;
-                labVertices[activeVertexIdx].y = touchY;
+            if (closestIdx !== -1) {
+                activeVertexIdx = closestIdx;
+                labCanvas.setPointerCapture(e.pointerId);
+                labCanvas.classList.add('dragging');
+                playSound('click');
                 drawLabTriangle();
             }
-        });
+        }, { passive: false });
+
+        labCanvas.addEventListener('pointermove', (e) => {
+            if (activeVertexIdx === null) return;
+            e.preventDefault();
+
+            const { x, y } = getLabPointerPosition(e);
+            const w = Number(labCanvas.dataset.logicalWidth) || labCanvas.clientWidth;
+            const h = Number(labCanvas.dataset.logicalHeight) || labCanvas.clientHeight;
+            const margin = 18;
+
+            labVertices[activeVertexIdx].x = Math.max(margin, Math.min(w - margin, x));
+            labVertices[activeVertexIdx].y = Math.max(margin, Math.min(h - margin, y));
+
+            drawLabTriangle();
+        }, { passive: false });
 
         const releasePointer = (e) => {
             if (activeVertexIdx !== null) {
                 activeVertexIdx = null;
-                try { labCanvas.releasePointerCapture(e.pointerId); } catch(err){}
+                labCanvas.classList.remove('dragging');
+                try {
+                    if (labCanvas.hasPointerCapture(e.pointerId)) {
+                        labCanvas.releasePointerCapture(e.pointerId);
+                    }
+                } catch(err) {}
                 drawLabTriangle();
             }
         };
 
         labCanvas.addEventListener('pointerup', releasePointer);
         labCanvas.addEventListener('pointercancel', releasePointer);
+        labCanvas.addEventListener('lostpointercapture', releasePointer);
 
         function checkLabMission() {
             const [A, B, C] = labVertices;
@@ -856,13 +952,14 @@
 
             drawStaticTriangle('classifierCanvas', item.triangle);
             renderClassifierBuckets(item.type);
+            setupClassifierDrag();
         }
 
         function renderClassifierBuckets(type) {
             const container = document.getElementById('classifierBuckets');
             container.innerHTML = '';
 
-            const buckets = type === 'sides' 
+            const buckets = type === 'sides'
                 ? [
                     { label: 'Equilátero', color: 'from-amber-600 to-yellow-600' },
                     { label: 'Isósceles', color: 'from-pink-600 to-rose-600' },
@@ -876,10 +973,147 @@
 
             buckets.forEach(b => {
                 const btn = document.createElement('button');
-                btn.className = `p-4 rounded-2xl bg-gradient-to-r ${b.color} font-outfit font-extrabold text-base text-white shadow-lg border border-white/20 active:scale-95 transition flex flex-col items-center justify-center gap-1`;
+                btn.type = 'button';
+                btn.dataset.dropLabel = b.label;
+                btn.className = `drop-target p-4 rounded-2xl bg-gradient-to-r ${b.color} font-outfit font-extrabold text-base text-white shadow-lg border border-white/20 active:scale-95 transition flex flex-col items-center justify-center gap-1`;
                 btn.innerHTML = `<i class="fa-solid fa-box-archive text-xl mb-1"></i> ${b.label}`;
-                btn.onclick = () => submitClassifierChoice(b.label);
+
+                // Continua funcionando por toque simples.
+                btn.addEventListener('click', () => {
+                    if (!classifierDidDrag) submitClassifierChoice(b.label);
+                });
+
                 container.appendChild(btn);
+            });
+        }
+
+        let classifierDragging = false;
+        let classifierDidDrag = false;
+        let classifierPointerId = null;
+        let classifierGhost = null;
+
+        function getClassifierItem() {
+            return CLASSIFIER_ITEMS[gameState.classifierIdx % CLASSIFIER_ITEMS.length];
+        }
+
+        function createClassifierGhost() {
+            const card = document.getElementById('classifierTriangleCard');
+            const ghost = card.cloneNode(true);
+            ghost.id = 'classifierDragGhost';
+            ghost.classList.add('drag-ghost', 'drag-source');
+            ghost.style.width = Math.min(220, card.getBoundingClientRect().width) + 'px';
+            document.body.appendChild(ghost);
+            return ghost;
+        }
+
+        function moveClassifierGhost(e) {
+            if (!classifierGhost) return;
+            classifierGhost.style.left = e.clientX + 'px';
+            classifierGhost.style.top = e.clientY + 'px';
+        }
+
+        function getDropTargetAt(x, y) {
+            // Durante o arraste o ghost fica fora do fluxo, então
+            // elementFromPoint encontra corretamente a caixa de destino.
+            const el = document.elementFromPoint(x, y);
+            return el ? el.closest('[data-drop-label]') : null;
+        }
+
+        function clearDropHighlights() {
+            document.querySelectorAll('.drop-target.drop-hover')
+                .forEach(el => el.classList.remove('drop-hover'));
+        }
+
+        function finishClassifierDrag(e) {
+            if (!classifierDragging) return;
+
+            const target = getDropTargetAt(e.clientX, e.clientY);
+            const label = target ? target.dataset.dropLabel : null;
+
+            clearDropHighlights();
+
+            if (classifierGhost) {
+                classifierGhost.remove();
+                classifierGhost = null;
+            }
+
+            classifierDragging = false;
+            classifierPointerId = null;
+
+            const wasDrag = classifierDidDrag;
+            classifierDidDrag = false;
+
+            if (wasDrag && label) {
+                submitClassifierChoice(label);
+            }
+        }
+
+        function cancelClassifierDrag() {
+            clearDropHighlights();
+            if (classifierGhost) {
+                classifierGhost.remove();
+                classifierGhost = null;
+            }
+            classifierDragging = false;
+            classifierPointerId = null;
+            classifierDidDrag = false;
+        }
+
+        function setupClassifierDrag() {
+            const card = document.getElementById('classifierTriangleCard');
+            if (!card || card.dataset.dragReady === 'true') return;
+
+            card.dataset.dragReady = 'true';
+            card.classList.add('drag-source');
+
+            card.addEventListener('pointerdown', (e) => {
+                // Botão esquerdo do mouse; toque/caneta passam normalmente.
+                if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+                e.preventDefault();
+                classifierDragging = true;
+                classifierDidDrag = false;
+                classifierPointerId = e.pointerId;
+                card.setPointerCapture?.(e.pointerId);
+                classifierGhost = createClassifierGhost();
+                moveClassifierGhost(e);
+                playSound('click');
+            }, { passive: false });
+
+            card.addEventListener('pointermove', (e) => {
+                if (!classifierDragging || e.pointerId !== classifierPointerId) return;
+
+                e.preventDefault();
+
+                // Pequeno limiar evita transformar um simples toque em arraste.
+                if (!classifierDidDrag) {
+                    const moved = Math.hypot(
+                        e.movementX || 0,
+                        e.movementY || 0
+                    );
+                    if (moved > 2) classifierDidDrag = true;
+                }
+
+                if (!classifierDidDrag) return;
+
+                moveClassifierGhost(e);
+
+                const target = getDropTargetAt(e.clientX, e.clientY);
+                clearDropHighlights();
+                if (target) target.classList.add('drop-hover');
+            }, { passive: false });
+
+            card.addEventListener('pointerup', (e) => {
+                if (e.pointerId === classifierPointerId) finishClassifierDrag(e);
+            });
+
+            card.addEventListener('pointercancel', cancelClassifierDrag);
+            card.addEventListener('lostpointercapture', (e) => {
+                if (classifierDragging && e.pointerId === classifierPointerId) {
+                    // Em alguns navegadores mobile o capture pode ser perdido.
+                    // Só finalizamos se ainda houver um ghost ativo.
+                    cancelClassifierDrag();
+                }
             });
         }
 
@@ -1158,7 +1392,12 @@
 
         window.addEventListener('load', () => {
             resizeLabCanvas();
-            window.addEventListener('resize', resizeLabCanvas);
+            window.addEventListener('resize', () => {
+                requestAnimationFrame(resizeLabCanvas);
+            });
+            window.addEventListener('orientationchange', () => {
+                setTimeout(resizeLabCanvas, 150);
+            });
             updateLabMissionUI();
             drawLabTriangle();
         });
