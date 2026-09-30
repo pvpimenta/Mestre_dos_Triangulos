@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mestre dos Triângulos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, #1e3a8a, #4c1d95);
+            color: white;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow: hidden; /* Prevent scrolling, acts like a native app */
+            touch-action: manipulation;
+        }
+
+        .btn-game {
+            transition: all 0.15s ease-in-out;
+            box-shadow: 0 6px 0px rgba(0,0,0,0.3);
+        }
+        .btn-game:active {
+            transform: translateY(6px);
+            box-shadow: 0 0px 0px rgba(0,0,0,0.3);
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop-in { animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            50% { transform: translateX(10px); }
+            75% { transform: translateX(-10px); }
+        }
+        .animate-shake { animation: shake 0.4s ease-in-out; }
+
+        .hidden-view { display: none !important; }
+        
+        .triangle-svg {
+            filter: drop-shadow(0px 8px 6px rgba(0,0,0,0.4));
+        }
+        
+        /* Modals and Overlays */
+        #feedback-overlay {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col">
+
+    <header class="w-full p-4 flex justify-between items-center bg-white/10 shadow-md z-10">
+        <button id="btn-back" class="hidden-view bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded-full btn-game flex items-center gap-2">
+            <span>⬅️</span> Voltar
+        </button>
+        <div id="header-title" class="text-2xl font-black text-yellow-300 drop-shadow-md text-center flex-1">
+            Mestre dos Triângulos
+        </div>
+        <div class="bg-indigo-900/80 px-4 py-2 rounded-full border-2 border-yellow-400 flex items-center gap-2">
+            <span class="text-xl">🏆</span>
+            <span id="score-display" class="font-bold text-xl">0</span>
+        </div>
+    </header>
+
+    <main id="app" class="flex-1 overflow-y-auto p-4 flex flex-col items-center pb-20">
+        
+        <!-- View: Main Menu -->
+        <div id="view-menu" class="w-full max-w-2xl flex flex-col gap-4 animate-pop-in">
+            <div class="text-center mb-4">
+                <h2 class="text-3xl font-black text-white drop-shadow-lg">Escolha seu Desafio!</h2>
+                <p class="text-blue-200 mt-2">Complete as missões para se tornar um Mestre.</p>
+            </div>
+            
+            <button onclick="startGame(0)" class="btn-game bg-emerald-500 rounded-2xl p-4 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="text-5xl">📏</div>
+                    <div class="text-left">
+                        <h3 class="text-2xl font-bold">1. Lados</h3>
+                        <p class="text-emerald-100 text-sm">Equilátero, Isósceles ou Escaleno?</p>
+                    </div>
+                </div>
+                <div class="text-white font-bold bg-white/20 px-3 py-1 rounded-full text-sm">Fases: 7</div>
+            </button>
+
+            <button onclick="startGame(1)" class="btn-game bg-blue-500 rounded-2xl p-4 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="text-5xl">📐</div>
+                    <div class="text-left">
+                        <h3 class="text-2xl font-bold">2. Ângulos</h3>
+                        <p class="text-blue-100 text-sm">Acutângulo, Retângulo ou Obtusângulo?</p>
+                    </div>
+                </div>
+                <div class="text-white font-bold bg-white/20 px-3 py-1 rounded-full text-sm">Fases: 7</div>
+            </button>
+
+            <button onclick="startGame(2)" class="btn-game bg-orange-500 rounded-2xl p-4 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="text-5xl">🍕</div>
+                    <div class="text-left">
+                        <h3 class="text-2xl font-bold">3. Mundo Real</h3>
+                        <p class="text-orange-100 text-sm">Encontre triângulos no dia a dia</p>
+                    </div>
+                </div>
+                <div class="text-white font-bold bg-white/20 px-3 py-1 rounded-full text-sm">Fases: 6</div>
+            </button>
+
+            <button onclick="startGame(3)" class="btn-game bg-purple-500 rounded-2xl p-4 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="text-5xl">🧠</div>
+                    <div class="text-left">
+                        <h3 class="text-2xl font-bold">4. Quiz do Mestre</h3>
+                        <p class="text-purple-100 text-sm">Teste seus conhecimentos teóricos</p>
+                    </div>
+                </div>
+                <div class="text-white font-bold bg-white/20 px-3 py-1 rounded-full text-sm">Fases: 10</div>
+            </button>
+
+            <button onclick="startGame(4)" class="btn-game bg-rose-500 rounded-2xl p-4 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="text-5xl">🥢</div>
+                    <div class="text-left">
+                        <h3 class="text-2xl font-bold">5. Existe?</h3>
+                        <p class="text-rose-100 text-sm">Condição de existência com palitos</p>
+                    </div>
+                </div>
+                <div class="text-white font-bold bg-white/20 px-3 py-1 rounded-full text-sm">Fases: 8</div>
+            </button>
+        </div>
+
+        <!-- View: Gameplay -->
+        <div id="view-game" class="hidden-view w-full max-w-2xl flex flex-col gap-6 w-full animate-pop-in">
+            
+            <div class="flex justify-between items-center bg-white/10 p-3 rounded-xl">
+                <div class="font-bold text-yellow-300" id="game-progress">Fase 1/10</div>
+                <div class="w-2/3 bg-gray-700 rounded-full h-4">
+                    <div id="progress-bar" class="bg-yellow-400 h-4 rounded-full" style="width: 10%"></div>
+                </div>
+            </div>
+
+            <div id="question-container" class="bg-white rounded-3xl p-6 text-gray-800 shadow-2xl flex flex-col items-center text-center">
+                <h2 id="question-text" class="text-2xl md:text-3xl font-black text-indigo-900 mb-6">Pergunta?</h2>
+                
+                <div id="visual-container" class="w-full flex justify-center items-center mb-6 min-h-[150px]">
+                    <!-- SVGs ou Emojis serão injetados aqui -->
+                </div>
+
+                <div id="options-container" class="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Botões injetados via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- View: Mode Complete -->
+        <div id="view-complete" class="hidden-view w-full max-w-md mx-auto text-center animate-pop-in mt-10">
+            <div class="text-8xl mb-6">🎉</div>
+            <h2 class="text-4xl font-black text-yellow-300 mb-4 drop-shadow-lg">Modo Concluído!</h2>
+            <p class="text-xl text-white mb-8">Você arrasou e ganhou muitos pontos.</p>
+            <button onclick="showMenu()" class="btn-game bg-yellow-400 text-indigo-900 text-2xl font-bold py-4 px-8 rounded-full w-full">
+                Voltar ao Menu Principal
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Feedback Overlay -->
+    <div id="feedback-overlay" class="hidden-view fixed inset-0 z-50 flex items-center justify-center">
+        <div id="feedback-card" class="bg-white p-8 rounded-3xl shadow-2xl transform scale-0 transition-transform duration-300 flex flex-col items-center">
+            <div id="feedback-icon" class="text-8xl mb-4">✅</div>
+            <h2 id="feedback-title" class="text-4xl font-black text-gray-800 mb-2">Correto!</h2>
+            <p id="feedback-msg" class="text-xl text-gray-600">+10 Pontos</p>
+        </div>
+    </div>
+
+    <script>
+        // Game State
+        let score = 0;
+        let currentMode = -1;
+        let currentPhaseIndex = 0;
+        let isAnimating = false;
+
+        // Visual Generators
+        const svgs = {
+            equilatero: `<svg viewBox="0 0 100 100" class="w-40 h-40 triangle-svg"><polygon points="50,10 90,90 10,90" fill="#34d399" stroke="#065f46" stroke-width="4"/><text x="50" y="85" font-size="12" text-anchor="middle" fill="#065f46">3cm</text><text x="25" y="55" font-size="12" text-anchor="end" fill="#065f46">3cm</text><text x="75" y="55" font-size="12" text-anchor="start" fill="#065f46">3cm</text></svg>`,
+            isosceles: `<svg viewBox="0 0 100 100" class="w-40 h-40 triangle-svg"><polygon points="50,10 75,90 25,90" fill="#60a5fa" stroke="#1e3a8a" stroke-width="4"/><text x="50" y="85" font-size="12" text-anchor="middle" fill="#1e3a8a">3cm</text><text x="35" y="50" font-size="12" text-anchor="end" fill="#1e3a8a">6cm</text><text x="65" y="50" font-size="12" text-anchor="start" fill="#1e3a8a">6cm</text></svg>`,
+            escaleno: `<svg viewBox="0 0 100 100" class="w-40 h-40 triangle-svg"><polygon points="10,40 90,90 20,90" fill="#f472b6" stroke="#831843" stroke-width="4"/><text x="50" y="85" font-size="12" text-anchor="middle" fill="#831843">7cm</text><text x="15" y="70" font-size="12" text-anchor="end" fill="#831843">4cm</text><text x="60" y="60" font-size="12" text-anchor="start" fill="#831843">9cm</text></svg>`,
+            retangulo: `<svg viewBox="0 0 100 100" class="w-40 h-40 triangle-svg"><polygon points="20,10 20,90 80,90" fill="#fbbf24" stroke="#78350f" stroke-width="4"/><rect x="20" y="75" width="15" height="15" fill="none" stroke="#78350f" stroke-width="2"/><circle cx="27.5" cy="82.5" r="2" fill="#78350f"/></svg>`,
+            acutangulo: `<svg viewBox="0 0 100 100" class="w-40 h-40 triangle-svg"><polygon points="50,10 90,90 10,90" fill="#c084fc" stroke="#4c1d95" stroke-width="4"/><path d="M 45 20 A 15 15 0 0 0 55 20" fill="none" stroke="#4c1d95" stroke-width="2"/><path d="M 20 80 A 15 15 0 0 0 30 90" fill="none" stroke="#4c1d95" stroke-width="2"/><path d="M 70 90 A 15 15 0 0 0 80 80" fill="none" stroke="#4c1d95" stroke-width="2"/></svg>`,
+            obtusangulo: `<svg viewBox="0 0 100 100" class="w-40 h-40 triangle-svg"><polygon points="10,40 90,90 20,90" fill="#fb923c" stroke="#7c2d12" stroke-width="4"/><path d="M 28 85 A 15 15 0 0 1 18 55" fill="none" stroke="#7c2d12" stroke-width="2"/></svg>`
+        };
+
+        const gameData = [
+            // Mode 0: Lados
+            {
+                title: "1. Classificação por Lados",
+                color: "bg-emerald-500",
+                questions: [
+                    { q: "Como se chama este triângulo que possui todos os 3 lados iguais?", vis: svgs.equilatero, options: ["Equilátero", "Isósceles", "Escaleno"], ans: 0 },
+                    { q: "Este triângulo tem apenas 2 lados com a mesma medida. Qual o nome dele?", vis: svgs.isosceles, options: ["Equilátero", "Isósceles", "Escaleno"], ans: 1 },
+                    { q: "Todos os 3 lados deste triângulo têm medidas diferentes. Quem é ele?", vis: svgs.escaleno, options: ["Equilátero", "Isósceles", "Escaleno"], ans: 2 },
+                    { q: "Medidas: 5cm, 5cm, 5cm. Qual a classificação?", vis: `<div class="text-5xl">📏</div>`, options: ["Equilátero", "Isósceles", "Escaleno"], ans: 0 },
+                    { q: "Medidas: 3cm, 4cm, 5cm. Qual a classificação?", vis: `<div class="text-5xl">📏</div>`, options: ["Equilátero", "Isósceles", "Escaleno"], ans: 2 },
+                    { q: "Medidas: 7cm, 7cm, 4cm. Qual a classificação?", vis: `<div class="text-5xl">📏</div>`, options: ["Equilátero", "Isósceles", "Escaleno"], ans: 1 },
+                    { q: "Se eu cortar um quadrado na diagonal, os dois triângulos formados terão 2 lados iguais. Eles são:", vis: `<div class="text-5xl">✂️</div>`, options: ["Equiláteros", "Isósceles", "Escalenos"], ans: 1 }
+                ]
+            },
+            // Mode 1: Ângulos
+            {
+                title: "2. Classificação por Ângulos",
+                color: "bg-blue-500",
+                questions: [
+                    { q: "Este triângulo possui um ângulo de 90 graus (ângulo reto). Como ele se chama?", vis: svgs.retangulo, options: ["Acutângulo", "Retângulo", "Obtusângulo"], ans: 1 },
+                    { q: "Todos os ângulos deste triângulo são menores que 90 graus. Qual o nome?", vis: svgs.acutangulo, options: ["Acutângulo", "Retângulo", "Obtusângulo"], ans: 0 },
+                    { q: "Este triângulo possui um ângulo 'aberto', maior que 90 graus. Qual o nome?", vis: svgs.obtusangulo, options: ["Acutângulo", "Retângulo", "Obtusângulo"], ans: 2 },
+                    { q: "Ângulos: 60°, 60°, 60°. Qual a classificação?", vis: `<div class="text-5xl">📐</div>`, options: ["Acutângulo", "Retângulo", "Obtusângulo"], ans: 0 },
+                    { q: "Ângulos: 30°, 60°, 90°. Qual a classificação?", vis: `<div class="text-5xl">📐</div>`, options: ["Acutângulo", "Retângulo", "Obtusângulo"], ans: 1 },
+                    { q: "Ângulos: 20°, 40°, 120°. Qual a classificação?", vis: `<div class="text-5xl">📐</div>`, options: ["Acutângulo", "Retângulo", "Obtusângulo"], ans: 2 },
+                    { q: "O esquadro mais comum que usamos na escola tem um ângulo de 90°. Portanto ele é um triângulo...", vis: `<div class="text-5xl">🎒</div>`, options: ["Acutângulo", "Retângulo", "Obtusângulo"], ans: 1 }
+                ]
+            },
+            // Mode 2: Mundo Real
+            {
+                title: "3. Triângulos no Mundo Real",
+                color: "bg-orange-500",
+                questions: [
+                    { q: "A clássica fatia de pizza tem o formato aproximado de qual triângulo (considerando as bordas retas)?", vis: `<div class="text-8xl">🍕</div>`, options: ["Isósceles", "Retângulo", "Escaleno"], ans: 0 },
+                    { q: "A placa de trânsito 'Dê a Preferência' é um triângulo de ponta cabeça. Seus 3 lados são iguais. Ela é:", vis: `<div class="text-8xl">⚠️</div>`, options: ["Equilátero", "Escaleno", "Retângulo"], ans: 0 },
+                    { q: "Uma escada apoiada em uma parede vertical forma com o chão um triângulo. Que tipo de triângulo é esse?", vis: `<div class="text-8xl">🪜</div>`, options: ["Acutângulo", "Retângulo", "Obtusângulo"], ans: 1 },
+                    { q: "A vela de um barco (daquelas que fazem 90 graus com o mastro) é um triângulo:", vis: `<div class="text-8xl">⛵</div>`, options: ["Equilátero", "Retângulo", "Obtusângulo"], ans: 1 },
+                    { q: "O telhado de uma casa comum, visto de frente, com dois lados inclinados iguais e a base, forma um triângulo:", vis: `<div class="text-8xl">🏠</div>`, options: ["Equilátero", "Isósceles", "Escaleno"], ans: 1 },
+                    { q: "Se você cortar um sanduíche de pão de forma quadrado ao meio, a fatia terá um ângulo reto e dois lados iguais. É um triângulo:", vis: `<div class="text-8xl">🥪</div>`, options: ["Retângulo Isósceles", "Acutângulo Escaleno", "Obtusângulo Equilátero"], ans: 0 }
+                ]
+            },
+            // Mode 3: Quiz Teórico
+            {
+                title: "4. Quiz do Mestre",
+                color: "bg-purple-500",
+                questions: [
+                    { q: "A soma dos ângulos internos de QUALQUER triângulo é sempre:", vis: `<div class="text-6xl">➕</div>`, options: ["180 graus", "360 graus", "90 graus"], ans: 0 },
+                    { q: "Um triângulo Equilátero também pode ser chamado de Equiângulo. Quanto mede CADA ângulo interno dele?", vis: `<div class="text-6xl">🤔</div>`, options: ["45 graus", "60 graus", "90 graus"], ans: 1 },
+                    { q: "Qual o triângulo que NÃO PODE existir?", vis: `<div class="text-6xl">🚫</div>`, options: ["Retângulo Isósceles", "Obtusângulo Escaleno", "Retângulo Equilátero"], ans: 2 },
+                    { q: "Em um triângulo retângulo, o maior lado (oposto ao ângulo de 90°) recebe o nome de:", vis: `<div class="text-6xl">👑</div>`, options: ["Cateto", "Hipotenusa", "Vértice"], ans: 1 },
+                    { q: "Se dois ângulos de um triângulo medem 50° e 60°, o terceiro ângulo mede:", vis: `<div class="text-6xl">🔢</div>`, options: ["70°", "80°", "90°"], ans: 0 },
+                    { q: "Todo triângulo equilátero é automaticamente também:", vis: `<div class="text-6xl">✨</div>`, options: ["Acutângulo", "Retângulo", "Obtusângulo"], ans: 0 },
+                    { q: "Se um triângulo tem um ângulo de 100°, ele obrigatoriamente é:", vis: `<div class="text-6xl">👀</div>`, options: ["Acutângulo", "Retângulo", "Obtusângulo"], ans: 2 },
+                    { q: "É possível um triângulo ter DOIS ângulos de 90°?", vis: `<div class="text-6xl">❓</div>`, options: ["Sim", "Não", "Depende do tamanho"], ans: 1 },
+                    { q: "O ponto onde os três lados de um triângulo se encontram chama-se:", vis: `<div class="text-6xl">📍</div>`, options: ["Vértice", "Aresta", "Centro"], ans: 0 },
+                    { q: "Se os lados de um triângulo medem 10cm, 10cm e 15cm. Ele é:", vis: `<div class="text-6xl">📐</div>`, options: ["Equilátero", "Isósceles", "Escaleno"], ans: 1 }
+                ]
+            },
+            // Mode 4: Existência
+            {
+                title: "5. Condição de Existência",
+                color: "bg-rose-500",
+                questions: [
+                    { q: "Palitos com as medidas: 3cm, 4cm e 5cm. É possível fechar um triângulo?", vis: `<div class="text-5xl font-mono text-rose-500 font-bold bg-rose-100 p-4 rounded-xl border-4 border-rose-300">3, 4, 5</div><br><p class="text-sm text-gray-500 mt-2">Dica: A soma dos dois menores deve ser MAIOR que o lado maior.</p>`, options: ["Sim, forma", "Não forma"], ans: 0 },
+                    { q: "Palitos com: 2cm, 2cm e 10cm. Forma triângulo?", vis: `<div class="text-5xl font-mono text-rose-500 font-bold bg-rose-100 p-4 rounded-xl border-4 border-rose-300">2, 2, 10</div>`, options: ["Sim, forma", "Não forma"], ans: 1 },
+                    { q: "Palitos com: 7cm, 7cm e 7cm. Forma triângulo?", vis: `<div class="text-5xl font-mono text-rose-500 font-bold bg-rose-100 p-4 rounded-xl border-4 border-rose-300">7, 7, 7</div>`, options: ["Sim, forma", "Não forma"], ans: 0 },
+                    { q: "Palitos com: 5cm, 8cm e 15cm. Forma triângulo?", vis: `<div class="text-5xl font-mono text-rose-500 font-bold bg-rose-100 p-4 rounded-xl border-4 border-rose-300">5, 8, 15</div>`, options: ["Sim, forma", "Não forma"], ans: 1 },
+                    { q: "Palitos com: 10cm, 12cm e 18cm. Forma triângulo?", vis: `<div class="text-5xl font-mono text-rose-500 font-bold bg-rose-100 p-4 rounded-xl border-4 border-rose-300">10, 12, 18</div>`, options: ["Sim, forma", "Não forma"], ans: 0 },
+                    { q: "Palitos com: 3cm, 3cm e 6cm. Forma triângulo?", vis: `<div class="text-5xl font-mono text-rose-500 font-bold bg-rose-100 p-4 rounded-xl border-4 border-rose-300">3, 3, 6</div><br><p class="text-sm text-gray-500 mt-2">Cuidado com o 'igual'!</p>`, options: ["Sim, forma", "Não forma"], ans: 1 },
+                    { q: "Palitos com: 6cm, 8cm e 10cm. Forma triângulo?", vis: `<div class="text-5xl font-mono text-rose-500 font-bold bg-rose-100 p-4 rounded-xl border-4 border-rose-300">6, 8, 10</div>`, options: ["Sim, forma", "Não forma"], ans: 0 },
+                    { q: "Palitos com: 4cm, 5cm e 10cm. Forma triângulo?", vis: `<div class="text-5xl font-mono text-rose-500 font-bold bg-rose-100 p-4 rounded-xl border-4 border-rose-300">4, 5, 10</div>`, options: ["Sim, forma", "Não forma"], ans: 1 }
+                ]
+            }
+        ];
+
+        const viewMenu = document.getElementById('view-menu');
+        const viewGame = document.getElementById('view-game');
+        const viewComplete = document.getElementById('view-complete');
+        const btnBack = document.getElementById('btn-back');
+        const scoreDisplay = document.getElementById('score-display');
+        const questionText = document.getElementById('question-text');
+        const visualContainer = document.getElementById('visual-container');
+        const optionsContainer = document.getElementById('options-container');
+        const gameProgress = document.getElementById('game-progress');
+        const progressBar = document.getElementById('progress-bar');
+        const headerTitle = document.getElementById('header-title');
+
+        // Feedback Overlay Elements
+        const feedbackOverlay = document.getElementById('feedback-overlay');
+        const feedbackCard = document.getElementById('feedback-card');
+        const feedbackIcon = document.getElementById('feedback-icon');
+        const feedbackTitle = document.getElementById('feedback-title');
+        const feedbackMsg = document.getElementById('feedback-msg');
+
+        btnBack.addEventListener('click', showMenu);
+
+        function showMenu() {
+            viewGame.classList.add('hidden-view');
+            viewComplete.classList.add('hidden-view');
+            viewMenu.classList.remove('hidden-view');
+            btnBack.classList.add('hidden-view');
+            headerTitle.innerText = "Mestre dos Triângulos";
+            currentMode = -1;
+        }
+
+        function startGame(modeIndex) {
+            currentMode = modeIndex;
+            currentPhaseIndex = 0;
+            
+            viewMenu.classList.add('hidden-view');
+            viewComplete.classList.add('hidden-view');
+            viewGame.classList.remove('hidden-view');
+            btnBack.classList.remove('hidden-view');
+            
+            const modeData = gameData[currentMode];
+            headerTitle.innerText = modeData.title;
+            
+            loadPhase();
+        }
+
+        function loadPhase() {
+            if (isAnimating) return;
+            
+            const modeData = gameData[currentMode];
+            
+            // Check if mode is complete
+            if (currentPhaseIndex >= modeData.questions.length) {
+                showComplete();
+                return;
+            }
+
+            const phase = modeData.questions[currentPhaseIndex];
+            
+            // Update Progress
+            const progPercent = ((currentPhaseIndex + 1) / modeData.questions.length) * 100;
+            gameProgress.innerText = `Fase ${currentPhaseIndex + 1}/${modeData.questions.length}`;
+            progressBar.style.width = `${progPercent}%`;
+
+            // Render Question
+            questionText.innerText = phase.q;
+            visualContainer.innerHTML = phase.vis;
+            
+            // Re-animate visual container
+            visualContainer.classList.remove('animate-pop-in');
+            void visualContainer.offsetWidth; // trigger reflow
+            visualContainer.classList.add('animate-pop-in');
+
+            // Render Options
+            optionsContainer.innerHTML = "";
+            phase.options.forEach((optText, idx) => {
+                const btn = document.createElement('button');
+                // Dynamically use mode color for buttons
+                let bgClass = "bg-gray-100 hover:bg-gray-200 text-gray-800";
+                
+                btn.className = `btn-game ${bgClass} font-bold text-lg md:text-xl py-4 px-6 rounded-2xl border-b-4 border-gray-300 w-full`;
+                btn.innerText = optText;
+                btn.onclick = () => handleAnswer(idx, btn);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function handleAnswer(selectedIndex, btnElement) {
+            if (isAnimating) return;
+            isAnimating = true;
+
+            const modeData = gameData[currentMode];
+            const phase = modeData.questions[currentPhaseIndex];
+            const isCorrect = (selectedIndex === phase.ans);
+
+            if (isCorrect) {
+                // Correct styling
+                btnElement.classList.remove('bg-gray-100', 'border-gray-300', 'text-gray-800');
+                btnElement.classList.add('bg-green-500', 'border-green-700', 'text-white');
+                score += 10;
+                updateScore();
+                showFeedback(true);
+            } else {
+                // Wrong styling
+                btnElement.classList.remove('bg-gray-100', 'border-gray-300', 'text-gray-800');
+                btnElement.classList.add('bg-red-500', 'border-red-700', 'text-white');
+                viewGame.classList.add('animate-shake');
+                setTimeout(() => viewGame.classList.remove('animate-shake'), 400);
+                showFeedback(false);
+            }
+
+            // Move to next phase after delay
+            setTimeout(() => {
+                hideFeedback();
+                currentPhaseIndex++;
+                isAnimating = false;
+                loadPhase();
+            }, 1800);
+        }
+
+        function updateScore() {
+            scoreDisplay.innerText = score;
+            // Pop effect on score
+            scoreDisplay.parentElement.classList.add('scale-110', 'bg-yellow-400', 'text-indigo-900');
+            setTimeout(() => {
+                scoreDisplay.parentElement.classList.remove('scale-110', 'bg-yellow-400', 'text-indigo-900');
+            }, 300);
+        }
+
+        function showFeedback(isCorrect) {
+            feedbackOverlay.classList.remove('hidden-view');
+            setTimeout(() => {
+                feedbackCard.classList.remove('scale-0');
+                feedbackCard.classList.add('scale-100');
+            }, 50);
+
+            if (isCorrect) {
+                feedbackIcon.innerText = "⭐";
+                feedbackTitle.innerText = "Correto!";
+                feedbackTitle.className = "text-4xl font-black text-green-500 mb-2";
+                feedbackMsg.innerText = "+10 Pontos de Experiência";
+                feedbackCard.className = "bg-white p-8 rounded-3xl shadow-2xl transform scale-100 transition-transform duration-300 flex flex-col items-center border-4 border-green-500";
+            } else {
+                feedbackIcon.innerText = "❌";
+                feedbackTitle.innerText = "Ops, Errou!";
+                feedbackTitle.className = "text-4xl font-black text-red-500 mb-2";
+                const correctAnswer = gameData[currentMode].questions[currentPhaseIndex].options[gameData[currentMode].questions[currentPhaseIndex].ans];
+                feedbackMsg.innerText = `A resposta era: ${correctAnswer}`;
+                feedbackCard.className = "bg-white p-8 rounded-3xl shadow-2xl transform scale-100 transition-transform duration-300 flex flex-col items-center border-4 border-red-500";
+            }
+        }
+
+        function hideFeedback() {
+            feedbackCard.classList.remove('scale-100');
+            feedbackCard.classList.add('scale-0');
+            setTimeout(() => {
+                feedbackOverlay.classList.add('hidden-view');
+            }, 300);
+        }
+
+        function showComplete() {
+            viewGame.classList.add('hidden-view');
+            btnBack.classList.add('hidden-view');
+            viewComplete.classList.remove('hidden-view');
+            
+            // Recriar animação
+            viewComplete.classList.remove('animate-pop-in');
+            void viewComplete.offsetWidth;
+            viewComplete.classList.add('animate-pop-in');
+        }
+
+    </script>
+</body>
+</html>
